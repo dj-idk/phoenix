@@ -1,22 +1,46 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
+from datetime import datetime
+
 
 class ProgressBase(BaseModel):
     value: float
     unit: str
-    date: datetime = datetime.now()
+    xp_per_unit: float
+
 
 class ProgressCreate(ProgressBase):
-    mission_id: Optional[int] = None
     dragon_id: Optional[int] = None
+    mission_id: Optional[int] = None
+    micro_habit_id: Optional[int] = None
+    task_id: Optional[int] = None
+
+
+class ProgressUpdate(BaseModel):
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    xp_per_unit: Optional[float] = None
+    dragon_id: Optional[int] = None
+    mission_id: Optional[int] = None
+    micro_habit_id: Optional[int] = None
+    task_id: Optional[int] = None
+
 
 class Progress(ProgressBase):
     id: int
-    mission_id: Optional[int]
-    dragon_id: Optional[int]
     created_at: datetime
     updated_at: datetime
+    total_xp: float
+    dragon_id: Optional[int] = None
+    mission_id: Optional[int] = None
+    micro_habit_id: Optional[int] = None
+    task_id: Optional[int] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProgressWithRelations(Progress):
+    dragon: Optional[int] = None  # Dragon ID
+    mission: Optional[int] = None  # Mission ID
+    micro_habit: Optional[int] = None  # MicroHabit ID
+    task: Optional[int] = None  # Task ID

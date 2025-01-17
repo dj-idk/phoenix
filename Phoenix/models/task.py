@@ -5,8 +5,9 @@ from .mission import mission_tasks
 from .dragon import dragon_tasks
 from .base import Base
 
+
 class Task(Base):
-    __tablename__ = 'tasks'
+    __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -17,5 +18,14 @@ class Task(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    missions = relationship('Mission', secondary=mission_tasks, back_populates='tasks')
-    dragons = relationship('Dragon', secondary=dragon_tasks, back_populates='tasks')
+    missions = relationship("Mission", secondary=mission_tasks, back_populates="tasks")
+    dragons = relationship("Dragon", secondary=dragon_tasks, back_populates="tasks")
+    progress_entries = relationship("Progress", back_populates="task")
+
+    @property
+    def completion_percentage(self):
+        return sum(entry.value for entry in self.progress_entries)
+
+    @property
+    def is_completed(self):
+        return self.completion_percentage >= 100
