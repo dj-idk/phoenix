@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from ..models.progress import Progress
 from ..schemas.progress import ProgressCreate, ProgressUpdate
 from typing import List, Optional
+from sqlalchemy import func
+from datetime import datetime, timedelta
 
 
 class ProgressService:
@@ -90,3 +92,94 @@ class ProgressService:
                 else None
             ),
         }
+
+    @staticmethod
+    def get_progress_by_date_range(
+        db: Session, user_id: int, start_date: datetime, end_date: datetime
+    ) -> List[Progress]:
+        return (
+            db.query(Progress)
+            .filter(
+                Progress.user_id == user_id,
+                Progress.date >= start_date,
+                Progress.date <= end_date,
+            )
+            .all()
+        )
+
+    @staticmethod
+    def get_progress_streak(
+        db: Session, user_id: int, entity_type: str, entity_id: int
+    ) -> int:
+        progress_entries = (
+            db.query(Progress)
+            .filter(
+                Progress.user_id == user_id,
+                getattr(Progress, f"{entity_type}_id") == entity_id,
+            )
+            .order_by(Progress.date.desc())
+            .all()
+        )
+
+        streak = 0
+        last_date = datetime.now().date()
+
+        for entry in progress_entries:
+            if (last_date - entry.date.date()).days == 1:
+                streak += 1
+                last_date = entry.date.date()
+            elif (last_date - entry.date.date()).days > 1:
+                break
+            else:
+                last_date = entry.date.date()
+
+        return streak
+
+    @staticmethod
+    def get_average_progress(
+        db: Session, user_id: int, entity_type: str, entity_id: int, days: int
+    ) -> float:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        average = (
+            db.query(func.avg(Progress.value))
+            .filter(
+                Progress.user_id == user_id,
+                getattr(Progress, f"{entity_type}_id") == entity_id,
+                Progress.date >= start_date,
+                Progress.date <= end_date,
+            )
+            .scalar()
+        )
+
+        return average or 0.0
+
+    @staticmethod
+    def get_progress_history(
+        db: Session, user_id: int, entity_type: str, entity_id: int, limit: int = 10
+    ) -> List[Progress]:
+        return (
+            db.query(Progress)
+            .filter(
+                Progress.user_id == user_id,
+                getattr(Progress, f"{entity_type}_id") == entity_id,
+            )
+            .order_by(Progress.date.desc())
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
+    def get_total_xp_by_entity(
+        db: Session, user_id: int, entity_type: str, entity_id: int
+    ) -> float:
+        total_xp = (
+            db.query(func.sum(Progress.value * Progress.xp_per_unit))
+            .filter(
+                Progress.user_id == user_id,
+                getattr(Progress, f"{entity_type}_id") == entity_id,
+            )
+            .scalar()
+        )
+        return total_xp or 0.0
